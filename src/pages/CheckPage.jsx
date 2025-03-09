@@ -2,15 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import ImageComparaison from "../components/ImageComparaison";
 import Loader from "../components/Loader";
+import axios from "axios";
 
 
 const CheckPage = () => {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(3);
-  const [hasResult, setHasResult] = useState(true);
+  const [result, setResult] = useState(-1);
+  const [hasResult, setHasResult] = useState(false);
   const [image, setImage] = useState(null);
   const [imageName, setImageName] = useState(null);
-  const [modifiedChain, setModifiedChain] = useState(["62b4964017388f90b890b354de7e85e4358813ae99ca893dd979466ccdbc5ae8", "731c9caac92ef88b58572b1dd94f823f11e562c51c9c7548a0b782c4bb6bc74e"]);
+  const [modifiedChain, setModifiedChain] = useState([null, null]);
   const [publisher, setPublisher] = useState("");
   
   const computeHash = async (file) => {
@@ -29,6 +30,28 @@ const CheckPage = () => {
     setImageName(file.name);
   };
 
+  const verifyModifiedImage = async () => {
+    setLoading(true)
+    setResult(-1)
+
+    const response = await fetch(image)
+    const blob = await response.blob()
+    const hash = await computeHash(blob)
+    const res = await axios.post("http://localhost:3030/verify_edit_image", {
+      edit_image_hash : hash
+    })
+    if (res.data.is_edited) {
+      setResult(3)
+      setModifiedChain([res.data.original_image, hash])
+    } else {
+      setResult(2)
+    }
+    setHasResult(true)
+
+    setLoading(false)
+    return
+  }
+
   const verityImage = async () => {
     if (!image) return;
     setLoading(true);
@@ -37,14 +60,18 @@ const CheckPage = () => {
     const response = await fetch(image);
     const blob = await response.blob();
     const hash = await computeHash(blob);
-    console.log("Hash of the original image:", hash);
-    // Fake API call simulation
-    setTimeout(() => {
-        const isValid = Math.random() > 0.5; // Replace this with actual hash verification logic
-        setResult(isValid ? 1 : 2);
-        setHasResult(true);
-        setLoading(false);
-    }, 2000);
+      const res = await axios.post("http://localhost:3030/verify_original_image", {
+          image_hash : hash
+      })
+      console.log(hash)
+      if (res.data.is_original) {
+          setResult(1)
+      } else {
+          await verifyModifiedImage()
+        return
+      }
+      setHasResult(true);
+      setLoading(false);
   };
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -77,7 +104,7 @@ const CheckPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg flex flex-col justify-center">
-        <h2 className="text-2xl font-bold mb-4">Upload or Copy an Image</h2>
+        <h2 className="text-2xl font-bold mb-4">Uncovering Misinformation and Manipulation</h2>
         <div
           {...getRootProps()}
           className="border-dashed border-2 border-gray-400 p-4 rounded-lg flex flex-col items-center justify-center"
@@ -104,13 +131,13 @@ const CheckPage = () => {
             Remove file
             </button>
 
-            <input 
-            type="text" 
-            className="border border-gray-300 rounded-lg px-4 py-2 mt-4" 
-            placeholder="Enter the user Public Key"
-            value={publisher}
-            onChange={(e) => setPublisher(e.target.value)}
-            />
+            {/*<input */}
+            {/*type="text" */}
+            {/*className="border border-gray-300 rounded-lg px-4 py-2 mt-4" */}
+            {/*placeholder="Enter the user Public Key"*/}
+            {/*value={publisher}*/}
+            {/*onChange={(e) => setPublisher(e.target.value)}*/}
+            {/*/>*/}
 
             <button
             onClick={() => {
@@ -131,7 +158,7 @@ const CheckPage = () => {
 
               {/* Result 1 mean it is a valid image */}
               {result == 1 && (
-                <p className="text-lg">{result ? "Image is valid" : "Image is not valid"}</p>
+                <p className="text-lg">This image is valid and authenticated by Hyle</p>
               )}
 
               {/* Result 2 mean we don't have the image in the blockchain */}

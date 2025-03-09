@@ -3,6 +3,7 @@ import { useDropzone } from "react-dropzone";
 import ImageComparaison from "../components/ImageComparaison";
 import Loader from "../components/Loader";
 import { toast, ToastContainer } from "react-toastify";
+import axios from "axios";
 
 const AddUser = () => {
   const [loading, setLoading] = useState(false);
@@ -23,15 +24,21 @@ const AddUser = () => {
   const verifyImageInBlockChainOrC2PA = async (file) => {
     if (!file) return;
     setLoading(true);
+    const image = URL.createObjectURL(file)
     const response = await fetch(image);
     const blob = await response.blob();
     const hash = await computeHash(blob);
     // Fake API call simulation
-    const success =  await new Promise((resolve) => {
-        const isSuccess = {blockchain : true, c2pa : true};
-        setLoading(false);
-        resolve(isSuccess);
-    }, 2000);
+      console.log(hash)
+      const res = await axios.post("http://localhost:3030/verify_original_image", {
+          image_hash : hash
+      })
+      const res2 = await axios.post("http://localhost:3030/verify_edit_image", {
+          edit_image_hash : hash
+      })
+      setLoading(false);
+
+      const success = {blockchain : res.data.is_original || res2.data.is_edited, c2pa : false}
     return success
   };
 
@@ -52,16 +59,24 @@ const AddUser = () => {
     const response = await fetch(image);
     const blob = await response.blob();
     const hash = await computeHash(blob);
-    console.log("Hash of the original image:", hash);
     // Fake API call simulation
-    setTimeout(() => {
-        setLoading(false);
-    }, 2000);
+      const res = await axios.post("http://localhost:3030/add_publisher", {
+          original_image_hash: hash,
+          original_image_signature: "",
+          publisher_pk: publisher,
+      })
+      if (res.data == "Nothing added...") {
+          toast.error("the user was not granted permissions")
+      } else {
+          toast.success("The user has been granted rights to modify the image")
+      }
+      setLoading(false)
+
   }
 
   const handleUpload = async (file) => {
     if (!file) return;
-    const result = verifyImageInBlockChainOrC2PA(file)
+    const result = await verifyImageInBlockChainOrC2PA(file)
     if (result.blockchain) {
         toast.success("Image already in the blockchain, enter the user public key you want to add")
     } else {
@@ -102,7 +117,7 @@ const AddUser = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg flex flex-col justify-center">
-        <h2 className="text-2xl font-bold mb-4">Upload the image you want to add Users</h2>
+        <h2 className="text-2xl font-bold mb-4">Add Editing Writes to an Image</h2>
         <div
           {...getRootProps()}
           className="border-dashed border-2 border-gray-400 p-4 rounded-lg flex flex-col items-center justify-center"
@@ -130,7 +145,7 @@ const AddUser = () => {
             <input 
             type="text" 
             className="border border-gray-300 rounded-lg px-4 py-2 mt-4" 
-            placeholder="Enter your user public Key"
+            placeholder="Enter your user image signature"
             value={publisher}
             onChange={(e) => setPublisher(e.target.value)}
             />
@@ -150,7 +165,7 @@ const AddUser = () => {
           className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg cursor-pointer"
           style={{ backgroundColor: (image != null && newUser != "" && publisher != "") ? "rgb(0, 0, 255)" : "rgb(200, 200, 200)", cursor: (image != null && newUser != "" && publisher != "") ? "pointer" : "not-allowed" }}
         >
-          Verity the image
+          Grant permissions
         </button>
         {loading && (
           <Loader/>

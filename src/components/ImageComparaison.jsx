@@ -30,7 +30,7 @@ const ImageComparaison = ({ beforeImage, afterImage }) => {
         </div>
       </div>
       {superpose ? (
-        <div className="flex flex-col items-center gap-3 relative w-full">
+        <div className="flex flex-col items-center gap-3 relative max-w-sm">
           <div className="flex gap-3 relative w-full">
             <img src={give_path_image(beforeImage)} alt="before" className="w-full" />
             <img
@@ -57,7 +57,7 @@ const ImageComparaison = ({ beforeImage, afterImage }) => {
           </div>
         </div>
       ) : (
-        <div className="flex gap-3 p-5">
+        <div className="flex gap-3 p-5 max-w-md">
             <div className="w-1/2 flex flex-col items-center gap-2 text-lg">
                 <img src={give_path_image(beforeImage)} alt="before" className="w-full" />
                 <div>Before</div>
